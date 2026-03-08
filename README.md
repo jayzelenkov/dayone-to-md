@@ -1,5 +1,7 @@
 # dayone-to-markdown
 
+[![CI](https://github.com/jayzelenkov/dayone-to-md/actions/workflows/ci.yml/badge.svg)](https://github.com/jayzelenkov/dayone-to-md/actions/workflows/ci.yml)
+
 ## Changes from the Original Repository
 
 This repo extends the [original dayone-to-md](https://github.com/quantdev/dayone-to-md) with the following improvements:
@@ -45,6 +47,16 @@ node bin/index.js
 ```
 
 Output: `.md` files → `src/entries/` · photos → `99-assets/dayone/`
+
+## Testing
+
+Unit tests cover the core conversion logic in `src/convert.js`.
+
+```bash
+npm test
+```
+
+Tests are also run automatically on every push and pull request to `master` via GitHub Actions.
 
 ## Options
 
