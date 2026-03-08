@@ -1,6 +1,6 @@
 # dayone-to-markdown
 
-## Changes from the Original Fork
+## Changes from the Original Repository
 
 This repo extends the [original dayone-to-md](https://github.com/quantdev/dayone-to-md) with the following improvements:
 
@@ -36,7 +36,15 @@ The DayOne app currently allows an export of entries to a JSON format. This pack
 
 ## Usage
 
-First [make sure you have NPM installed](https://www.npmjs.com/package/dayone-to-md/tutorial), create a folder for this project, open command line interface there, install dayone-to-md with `npm install dayone-to-md` and initialize with `npm init`. Add the output zip file from _DayOne->Export to JSON_ into a folder titled `dayone` at the root of the project. Then add an npm script with the `dayone-to-md` bin i.e. `"scripts": {"convert": "dayone-to-md"}` to `package.json`. Now you can run `npm run convert`! The markdown files get output to `src/entries` and the photos are put in the `99-assets/dayone` directory by default.
+1. Export your journal from DayOne via _File → Export → JSON_
+2. Place the `.zip` file in a `dayone/` folder at the project root
+3. Run:
+
+```bash
+node bin/index.js
+```
+
+Output: `.md` files → `src/entries/` · photos → `99-assets/dayone/`
 
 ## Options
 
