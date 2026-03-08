@@ -55,15 +55,18 @@ function unpackDayone(zipDirectories) {
     function unpack(directory) {
         // Make sure the output directories exist
         const entriesDirectory = path.resolve('./src/entries')
-        const photosDirectory = path.resolve('./public/static')
+        const photosDirectory = path.resolve('./99-assets/dayone')
         ensureDirectoriesExist([photosDirectory, entriesDirectory])
 
         var zip = new AdmZip(directory)
         var zipEntries = zip.getEntries() // an array of ZipEntry records
 
         zipEntries.forEach(function(zipEntry) {
-            // Main json file
-            if (zipEntry.entryName === 'Journal.json') {
+            // Main json file — matches Journal.json or any root-level named journal (e.g. "My Journal.json")
+            const isRootJson =
+                zipEntry.entryName.endsWith('.json') &&
+                !zipEntry.entryName.includes('/')
+            if (isRootJson) {
                 const fullData = JSON.parse(zip.readAsText(zipEntry.entryName))
                 const mdEntries = fullData.entries.map(entryToMarkdown)
 
@@ -87,16 +90,36 @@ function unpackDayone(zipDirectories) {
 }
 
 function entryToMarkdown(entry) {
-    let title = entry.text.slice(0, entry.text.indexOf('\n')).trim()
-    let text = entry.text.slice(entry.text.indexOf('\n')).trim()
+    let fullText = entry.text || ''
 
+    // Replace photo links before splitting title/body so image-only first lines are handled
     if (entry.photos) {
-        entry.photos.map(photo => {
-            text = text.replace(
-                `dayone-moment://${photo.identifier}`,
-                `./static/${photo.md5}.${photo.type}`
-            )
+        entry.photos.forEach(photo => {
+            fullText = fullText.split(`dayone-moment://${photo.identifier}`).join(`99-assets/dayone/${photo.md5}.${photo.type}`)
         })
+    }
+
+    // Replace video links with a plain label (videos can't embed in markdown)
+    if (entry.videos) {
+        entry.videos.forEach(video => {
+            const pattern = new RegExp(`!\\[\\]\\(dayone-moment:/video/${video.identifier}\\)`, 'g')
+            fullText = fullText.replace(pattern, `*(video: ${video.identifier}.${video.type || 'mp4'})*`)
+        })
+    }
+
+    // Strip any remaining dayone-moment:/audio/ links
+    fullText = fullText.replace(/!\[\]\(dayone-moment:\/audio\/[^)]+\)/g, '*(audio)*')
+
+    const newlineIndex = fullText.indexOf('\n')
+    let title = newlineIndex === -1 ? fullText.trim() : fullText.slice(0, newlineIndex).trim()
+    let text = newlineIndex === -1 ? '' : fullText.slice(newlineIndex).trim()
+
+    // If the first line is a markdown image/media tag, use it in the body and pick a title from the next line
+    if (title.startsWith('![')) {
+        const bodyLines = fullText.trim().split('\n')
+        const firstTextLine = bodyLines.find(l => l.trim() && !l.trim().startsWith('!['))
+        title = firstTextLine ? firstTextLine.replace(/^#+\s*/, '').trim() : ''
+        text = fullText.trim()
     }
 
     let formattedEntry = {
@@ -116,7 +139,7 @@ function entryToMarkdown(entry) {
 function saveEntries(entries, location) {
     entries.map(({ md, date, title }) => {
         const fileDate = moment(date, 'D MMM, YYYY').format('YYYY-MM-DD')
-        const fileName = sanitize(title)
+        const fileName = (sanitize(title) || 'untitled').slice(0, 100)
         var saveTo = path.join(location, `${fileDate} - ${fileName}.md`)
         fs.writeFileSync(saveTo, md, {
             encoding: 'utf8'
