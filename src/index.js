@@ -6,9 +6,15 @@ const moment = require('moment')
 var sanitize = require('sanitize-filename')
 const { ensureDirectoriesExist } = require('./utils')
 
+const argv = process.argv.slice(2)
+const photosDirFlagIdx = argv.indexOf('--photos-dir')
+const photosDirArg = photosDirFlagIdx !== -1 && argv[photosDirFlagIdx + 1]
+    ? argv[photosDirFlagIdx + 1]
+    : '99-assets/dayone'
+
 getDayoneFolderPath()
     .then(getDayoneZips)
-    .then(unpackDayone)
+    .then(zipDirs => unpackDayone(zipDirs, photosDirArg))
     .catch(err => {
         throw new Error(err)
     })
@@ -47,7 +53,7 @@ function getDayoneZips(dayonePath) {
     })
 }
 
-function unpackDayone(zipDirectories) {
+function unpackDayone(zipDirectories, photosDir) {
     let entriesProcess = 0
 
     zipDirectories.map(unpack)
@@ -55,7 +61,7 @@ function unpackDayone(zipDirectories) {
     function unpack(directory) {
         // Make sure the output directories exist
         const entriesDirectory = path.resolve('./src/entries')
-        const photosDirectory = path.resolve('./99-assets/dayone')
+        const photosDirectory = path.resolve(photosDir)
         ensureDirectoriesExist([photosDirectory, entriesDirectory])
 
         var zip = new AdmZip(directory)
@@ -68,7 +74,7 @@ function unpackDayone(zipDirectories) {
                 !zipEntry.entryName.includes('/')
             if (isRootJson) {
                 const fullData = JSON.parse(zip.readAsText(zipEntry.entryName))
-                const mdEntries = fullData.entries.map(entryToMarkdown)
+                const mdEntries = fullData.entries.map(e => entryToMarkdown(e, photosDir))
 
                 entriesProcess += mdEntries.length
 
@@ -89,13 +95,13 @@ function unpackDayone(zipDirectories) {
     console.log(`${entriesProcess} entries processed!`)
 }
 
-function entryToMarkdown(entry) {
+function entryToMarkdown(entry, photosDir) {
     let fullText = entry.text || ''
 
     // Replace photo links before splitting title/body so image-only first lines are handled
     if (entry.photos) {
         entry.photos.forEach(photo => {
-            fullText = fullText.split(`dayone-moment://${photo.identifier}`).join(`99-assets/dayone/${photo.md5}.${photo.type}`)
+            fullText = fullText.split(`dayone-moment://${photo.identifier}`).join(`${photosDir}/${photo.md5}.${photo.type}`)
         })
     }
 
